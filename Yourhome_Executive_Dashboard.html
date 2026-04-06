@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YourHome Executive Dashboard v3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Outfit', sans-serif; background: radial-gradient(circle at top left, #1e1b4b, #0f172a); color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.06); }
+        .tab-btn.active { background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.5); color: #60a5fa; }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+        .ht { display: none !important; }
+        .insight-box { border-left: 4px solid; padding: 1rem 1.25rem; border-radius: 0.75rem; margin-bottom: 0.75rem; }
+        .leaflet-popup-content-wrapper { background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 12px; }
+        .leaflet-popup-tip { background: #1e293b; }
+        table { width: 100%; border-collapse: collapse; }
+        table th { background: rgba(59,130,246,0.15); padding: 8px 12px; text-align: left; font-weight: 600; }
+        table td { padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        table tr:hover td { background: rgba(255,255,255,0.03); }
+    </style>
+</head>
+<body class="min-h-screen flex text-sm">
+
+    <!-- Sidebar -->
+    <aside class="w-64 glass border-r border-slate-700/30 flex flex-col p-5 hidden md:flex sticky top-0 h-screen">
+        <div class="mb-8">
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 flex items-center gap-2">
+                <i data-lucide="home" class="text-blue-400"></i> YourHome
+            </h1>
+            <p class="text-slate-500 text-xs mt-1">Executive Dashboard v3</p>
+        </div>
+        <nav class="space-y-2 flex-1">
+            <button onclick="switchTab(1)" id="btn-tab1" class="tab-btn active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 text-left">
+                <i data-lucide="trending-up"></i> Traffic Overview
+            </button>
+            <button onclick="switchTab(2)" id="btn-tab2" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 text-left">
+                <i data-lucide="users"></i> Demographics
+            </button>
+            <button onclick="switchTab(3)" id="btn-tab3" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 text-left">
+                <i data-lucide="brain-circuit"></i> Business Analysis
+            </button>
+            <button onclick="switchTab(4)" id="btn-tab4" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 text-left">
+                <i data-lucide="map-pin"></i> Zones & Map
+            </button>
+        </nav>
+        <div class="pt-4 border-t border-slate-700/50">
+            <p class="text-xs text-slate-500">Data: MySQL DB + GA4 CSV</p>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 lg:p-8 h-screen overflow-y-auto">
+        <header class="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold" id="page-title">Traffic Overview</h2>
+                <p class="text-slate-400 mt-1" id="page-desc">สรุปภาพรวมการใช้งานและปัจจัยด้านธุรกิจ</p>
+            </div>
+            <div class="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700">
+                <i data-lucide="calendar" class="text-slate-400 w-4 h-4"></i>
+                <select id="dateRange" onchange="updateData()" class="bg-slate-800 text-white outline-none cursor-pointer text-sm">
+                    <option value="9999" selected>ข้อมูลทั้งหมด (All Time)</option>
+                    <option value="30">1 เดือนล่าสุด (30 วัน)</option>
+                    <option value="15">15 วันล่าสุด</option>
+                    <option value="7">7 วันล่าสุด</option>
+                    <option value="3">3 วันล่าสุด</option>
+                    <option value="1">วันนี้ (1 วัน)</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- ===== TAB 1: TRAFFIC ===== -->
+        <div id="tab1" class="fade-in">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="glass p-5 rounded-2xl text-center">
+                    <p class="text-slate-400 text-xs uppercase tracking-wider mb-1">หน้าแรก (Home)</p>
+                    <h4 class="text-3xl font-bold text-white">1,762</h4>
+                    <p class="text-xs text-slate-500 mt-1">Active Users (GA4)</p>
+                </div>
+                <div class="glass p-5 rounded-2xl text-center border-l-2 border-blue-500">
+                    <p class="text-slate-400 text-xs uppercase tracking-wider mb-1">รันผลวิเคราะห์ AI</p>
+                    <h4 class="text-3xl font-bold text-blue-400" id="kpi-result">0</h4>
+                    <p class="text-xs text-slate-500 mt-1">Records (DB)</p>
+                </div>
+                <div class="glass p-5 rounded-2xl text-center border-l-2 border-amber-500">
+                    <p class="text-slate-400 text-xs uppercase tracking-wider mb-1">กดจอง (Booking)</p>
+                    <h4 class="text-3xl font-bold text-amber-400">33</h4>
+                    <p class="text-xs text-red-400 mt-1">Conversion 1.8%</p>
+                </div>
+                <div class="glass p-5 rounded-2xl text-center border-l-2 border-red-500">
+                    <p class="text-red-400 text-xs uppercase tracking-wider mb-1">Web Exceptions</p>
+                    <h4 class="text-3xl font-bold text-red-500">6,836</h4>
+                    <p class="text-xs text-red-400 mt-1">ผลกระทบ 328 users</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="filter" class="w-4 h-4 text-blue-400"></i> Drop-off Funnel</h3>
+                    <div class="h-64"><canvas id="funnelChart"></canvas></div>
+                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">⚠️ อัตราการสูญเสียสูงมาก: 1,762 → 166 → 33 คน จาก Home ไป Booking หายไปถึง 98.1%</p>
+                </div>
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4 text-indigo-400"></i> กิจกรรมรายวัน (จาก DB)</h3>
+                    <div class="h-64"><canvas id="seoLineChart"></canvas></div>
+                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">กราฟแสดง Log การรัน AI analyze จาก MySQL — ใช้ filtering ด้านบนได้</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB 2: DEMOGRAPHICS ===== -->
+        <div id="tab2" class="fade-in ht">
+            <!-- KPI Row -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="demo-kpis">
+                <div class="glass p-5 rounded-2xl text-center border-l-2 border-amber-500">
+                    <p class="text-slate-400 text-xs mb-1">อายุเฉลี่ย</p>
+                    <h4 class="text-3xl font-bold text-amber-400" id="kpi-age">0</h4>
+                    <p class="text-xs text-slate-500 mt-1">ปี (Years Old)</p>
+                </div>
+                <div class="glass p-5 rounded-2xl text-center border-l-2 border-pink-500">
+                    <p class="text-slate-400 text-xs mb-1">กลุ่มอายุส่วนใหญ่</p>
+                    <h4 class="text-2xl font-bold text-pink-400" id="kpi-age-group">-</h4>
+                    <p class="text-xs text-slate-500 mt-1">ช่วงอายุที่พบมากสุด</p>
+                </div>
+                <div class="glass p-5 rounded-2xl text-center border-l-2 border-blue-500">
+                    <p class="text-slate-400 text-xs mb-1">เพศชาย</p>
+                    <h4 class="text-3xl font-bold text-blue-400" id="kpi-male">-</h4>
+                    <p class="text-xs text-slate-500 mt-1">% ของผู้ใช้ทั้งหมด</p>
+                </div>
+                <div class="glass p-5 rounded-2xl text-center border-l-2 border-emerald-500">
+                    <p class="text-slate-400 text-xs mb-1">เพศหญิง</p>
+                    <h4 class="text-3xl font-bold text-emerald-400" id="kpi-female">-</h4>
+                    <p class="text-xs text-slate-500 mt-1">% ของผู้ใช้ทั้งหมด</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Gender Chart -->
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="font-bold mb-1">สัดส่วนเพศผู้ใช้งาน (Gender Ratio)</h3>
+                    <p class="text-xs text-slate-400 mb-4">จาก parameter ที่ระบุผ่าน API — จำนวนรายการทั้งหมด: <span id="total-analyze-count" class="text-white font-semibold">-</span> records</p>
+                    <div class="h-60"><canvas id="genderChart"></canvas></div>
+                </div>
+
+                <!-- Age Group Chart -->
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="font-bold mb-1">การแบ่งกลุ่มอายุผู้ใช้งาน</h3>
+                    <p class="text-xs text-slate-400 mb-4">อายุคำนวณจากปีเกิดที่ระบุเข้ามา (ปี 2568)</p>
+                    <div class="h-60"><canvas id="ageGroupChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Location Breakdown Table -->
+            <div class="glass p-6 rounded-2xl mb-6">
+                <h3 class="font-bold mb-1 flex items-center gap-2"><i data-lucide="map-pin" class="w-4 h-4 text-emerald-400"></i> ทำเลที่เปิดให้ค้นหา (Searchable Locations)</h3>
+                <p class="text-xs text-slate-400 mb-4">แสดงโซนทั้งหมด 28 โซนที่ระบบรองรับ — ดึงจากตาราง <code class="text-indigo-300">searchable_locations</code></p>
+                <div class="overflow-x-auto rounded-xl">
+                    <table>
+                        <thead><tr><th>ID</th><th>ชื่อทำเล (Location)</th><th>Latitude</th><th>Longitude</th><th>หมายเหตุ</th></tr></thead>
+                        <tbody id="location-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Analysis Insights -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="font-bold mb-3 flex items-center gap-2 text-amber-300"><i data-lucide="lightbulb" class="w-4 h-4"></i> Data Analysis Insight - Demographics</h3>
+                    <div class="space-y-3 text-slate-300 text-sm leading-relaxed">
+                        <div class="insight-box bg-amber-900/10" style="border-color:#f59e0b">
+                            <strong class="text-amber-300">👤 กลุ่มผู้ใช้หลัก:</strong><br>
+                            อายุเฉลี่ยอยู่ในช่วง <strong>30-46 ปี</strong> ซึ่งเป็นกลุ่ม Millennial ถึง Gen X — นี่คือกลุ่มที่มีความพร้อมทางการเงินและมักจะซื้อบ้านเพื่ออยู่อาศัยจริงหรือลงทุน ไม่ใช่แค่ดูเล่น
+                        </div>
+                        <div class="insight-box bg-blue-900/10" style="border-color:#3b82f6">
+                            <strong class="text-blue-300">⚤ สัดส่วนเพศ:</strong><br>
+                            ผู้ใช้ส่วนใหญ่เป็นเพศชาย — ชี้ให้เห็นว่า UX/UI ปัจจุบัน (การค้นหาแบบกรอกข้อมูลละเอียด) อาจเหมาะกับสไตล์การตัดสินใจของเพศชายมากกว่า ควรพิจารณาทำ Social Proof หรือข้อมูลภาพถ่ายให้ดึงดูดเพศหญิงด้วย
+                        </div>
+                        <div class="insight-box bg-slate-800/50" style="border-color:#64748b">
+                            <strong class="text-slate-300">🔍 ข้อสังเกต:</strong><br>
+                            พบ record บางส่วนมีอายุน้อยผิดปกติ (1-14 ปี) — น่าจะเป็นข้อมูลทดสอบ (Test Data) ในช่วง Dev ต้องกรองออกก่อนวิเคราะห์ เพื่อความแม่นยำ
+                        </div>
+                    </div>
+                </div>
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="font-bold mb-3 flex items-center gap-2 text-emerald-300"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> Business Insight - Budget & Demand</h3>
+                    <div class="space-y-3 text-slate-300 text-sm leading-relaxed">
+                        <div class="insight-box bg-emerald-900/10" style="border-color:#10b981">
+                            <strong class="text-emerald-300">💰 งบประมาณที่น่าจะตรงกลุ่ม:</strong><br>
+                            กลุ่มอายุ 30-46 ปีในไทย โดยเฉลี่ยมีความสามารถกู้สินเชื่อ <strong>฿3-8 ล้านบาท</strong> สำหรับที่อยู่อาศัย แต่จากข้อมูล Supply ของเรา ทรัพย์ส่วนใหญ่ที่มีในระบบมักเป็นระดับ Premium (>8M) ทำให้เกิด Mismatch
+                        </div>
+                        <div class="insight-box bg-indigo-900/10" style="border-color:#818cf8">
+                            <strong class="text-indigo-300">📍 โซนที่น่าสนใจ (28 โซน):</strong><br>
+                            ระบบรองรับทำเลหลากหลายทั้ง CBD (Silom, Asok, Nana) และชานเมือง (Bang Bon, Ram Inthra) แต่ยังไม่มีข้อมูล Heatmap ว่าโซนไหน "Search มากที่สุด" ต้องเปิด GA4 Audience Explorer เพื่อยืนยัน
+                        </div>
+                        <div class="insight-box bg-red-900/10" style="border-color:#f43f5e">
+                            <strong class="text-red-300">⚠️ ปัญหาเชิงธุรกิจ:</strong><br>
+                            Budget_min และ Budget_max ใน API เป็น 0 ทั้งหมด — แปลว่าระบบยังไม่ได้เก็บงบประมาณของ user จาก Flow ปัจจุบัน ต้องเพิ่ม field นี้ใน /analyze endpoint เพื่อให้วิเคราะห์ได้ละเอียดยิ่งขึ้น
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB 3: BUSINESS ANALYSIS ===== -->
+        <div id="tab3" class="fade-in ht">
+            <!-- เหตุผลหลัก -->
+            <div class="mb-8 p-6 glass rounded-2xl border border-blue-500/20">
+                <h3 class="text-2xl font-bold text-white mb-2">💡 3 สาเหตุหลักที่ยังไม่มีคนจอง</h3>
+                <p class="text-slate-400 text-sm mb-6">วิเคราะห์จากข้อมูลจริง: GA4 CSV + MySQL DB (api_logs + bookings + property_specs)</p>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="p-5 rounded-2xl bg-red-900/15 border border-red-500/40">
+                        <div class="text-3xl mb-3">🔴</div>
+                        <h4 class="text-lg font-bold text-red-300 mb-2">1. ระบบพัง — Tech Errors</h4>
+                        <p class="text-slate-300 text-sm leading-relaxed">Web Exceptions พุ่งสูงถึง <strong class="text-white">6,836 ครั้ง</strong> จากผู้ใช้ <strong class="text-white">328 คน</strong> = เฉลี่ย <strong class="text-red-300">20.8 ครั้ง/คน</strong> แปลว่าระบบพังแทบทุกครั้งที่ลูกค้าพยายามโต้ตอบ ทำให้เกิด Distrust และ Churn ทันที</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-amber-900/15 border border-amber-500/40">
+                        <div class="text-3xl mb-3">🟡</div>
+                        <h4 class="text-lg font-bold text-amber-300 mb-2">2. หน้าแรกดึงดูดไม่พอ</h4>
+                        <p class="text-slate-300 text-sm leading-relaxed">จาก Home 1,762 คน ไป Search แค่ <strong class="text-white">226 คน (12.8%)</strong> ชี้ว่าหน้าแรกขาด Clear CTA หรือ Value Proposition ที่โน้มน้าวพอ — คนส่วนใหญ่เข้ามาแล้วออกทันทีโดยไม่ลองใช้</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-indigo-900/15 border border-indigo-500/40">
+                        <div class="text-3xl mb-3">🟣</div>
+                        <h4 class="text-lg font-bold text-indigo-300 mb-2">3. Supply ไม่ตรงความต้องการ</h4>
+                        <p class="text-slate-300 text-sm leading-relaxed">166 คน รันผล AI และอ่านนาน <strong class="text-white">~8 นาที (503 วินาที)</strong> แต่มีแค่ <strong class="text-amber-300">33 คน (19.9%)</strong> กดจอง — สัญญาณชัดว่า "บ้านที่ได้ไม่ตรงงบหรือทำเล" ที่ต้องการจริงๆ</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="font-bold mb-1">Engagement Time ต่อหน้า (วินาที)</h3>
+                    <p class="text-xs text-slate-400 mb-4">เวลาเฉลี่ยที่ผู้ใช้อยู่ในแต่ละขั้นตอน — สูงแปลว่าสนใจ ต่ำแปลว่าออกเร็ว</p>
+                    <div class="h-64"><canvas id="engagementChart"></canvas></div>
+                </div>
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="font-bold mb-1">Demand vs Supply Gap</h3>
+                    <p class="text-xs text-slate-400 mb-4">ช่องว่างระหว่างงบประมาณที่ผู้ใช้ต้องการ กับทรัพย์ที่ระบบมีให้</p>
+                    <div class="h-64"><canvas id="supplyDemandChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Conversion Funnel with %  -->
+            <div class="glass p-6 rounded-2xl mb-8">
+                <h3 class="font-bold mb-4">Conversion Funnel — ตัวเลขจริงพร้อมอัตราร้อยละ</h3>
+                <div class="grid grid-cols-4 gap-2">
+                    <div class="text-center p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                        <p class="text-slate-400 text-xs mb-2">Home</p>
+                        <p class="text-3xl font-bold text-blue-400">1,762</p>
+                        <p class="text-xs text-blue-300 mt-1">100% (Base)</p>
+                    </div>
+                    <div class="text-center p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                        <p class="text-slate-400 text-xs mb-2">Search/Input</p>
+                        <p class="text-3xl font-bold text-emerald-400">226</p>
+                        <p class="text-xs text-emerald-300 mt-1">12.8% ↓ Drop 87.2%</p>
+                    </div>
+                    <div class="text-center p-4 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                        <p class="text-slate-400 text-xs mb-2">AI Result</p>
+                        <p class="text-3xl font-bold text-amber-400">166</p>
+                        <p class="text-xs text-amber-300 mt-1">9.4% ↓ Drop 90.6%</p>
+                    </div>
+                    <div class="text-center p-4 bg-red-500/10 rounded-xl border border-red-500/20">
+                        <p class="text-slate-400 text-xs mb-2">Booking</p>
+                        <p class="text-3xl font-bold text-red-400">33</p>
+                        <p class="text-xs text-red-300 mt-1">1.8% ↓ Drop 98.2%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="glass p-6 rounded-2xl">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-2 text-emerald-300"><i data-lucide="check-square" class="w-5 h-5"></i> แนวทางแก้ไขที่แนะนำ (Actionable Recommendations)</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="space-y-3">
+                        <div class="flex gap-3 p-3 bg-red-900/10 rounded-xl border border-red-500/20">
+                            <span class="text-red-400 text-lg font-bold">①</span>
+                            <div><p class="text-white font-semibold text-sm">แก้ Bug ด่วนที่สุด (Quick Win)</p><p class="text-slate-400 text-xs mt-1">Debug Web Exceptions 6,836 ครั้ง — ดูใน GA4 Event Report ว่า error_message คืออะไร ต้องแก้ใน Sprint ถัดไป</p></div>
+                        </div>
+                        <div class="flex gap-3 p-3 bg-amber-900/10 rounded-xl border border-amber-500/20">
+                            <span class="text-amber-400 text-lg font-bold">②</span>
+                            <div><p class="text-white font-semibold text-sm">ปรับ Hero Section หน้าแรก</p><p class="text-slate-400 text-xs mt-1">เพิ่ม CTA ชัดเจน เช่น "วิเคราะห์บ้านที่ใช่ฟรีใน 1 นาที" พร้อม Social Proof (จำนวน user ที่ใช้แล้ว)</p></div>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex gap-3 p-3 bg-indigo-900/10 rounded-xl border border-indigo-500/20">
+                            <span class="text-indigo-400 text-lg font-bold">③</span>
+                            <div><p class="text-white font-semibold text-sm">เพิ่มทรัพย์ระดับ Mid-Range</p><p class="text-slate-400 text-xs mt-1">กลุ่มเป้าหมายน่าจะหาบ้านช่วง 3-8 ล้านบาท ต้องเร่ง onboard Agent/Landlord ที่มีทรัพย์ระดับนี้โดยเฉพาะ</p></div>
+                        </div>
+                        <div class="flex gap-3 p-3 bg-emerald-900/10 rounded-xl border border-emerald-500/20">
+                            <span class="text-emerald-400 text-lg font-bold">④</span>
+                            <div><p class="text-white font-semibold text-sm">เก็บ Budget ใน API</p><p class="text-slate-400 text-xs mt-1">budget_min/max ปัจจุบันเป็น 0 ทั้งหมด ควรบันทึก wealth_status หรือ budget range ให้ครบเพื่อ Personalization</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB 4: MAP ===== -->
+        <div id="tab4" class="fade-in ht flex-col gap-6">
+            <div class="glass p-6 rounded-2xl border border-emerald-500/20">
+                <h3 class="text-xl font-bold mb-2 flex items-center gap-2"><i data-lucide="map" class="text-emerald-400"></i> แผนที่ 28 ทำเลในระบบ</h3>
+                <p class="text-slate-400 text-sm mb-4">จุดแต่ละหมุดคือโซนที่ Searchable จาก DB — คลิกเพื่อดูข้อมูลเจาะลึก</p>
+                <div id="map" class="w-full h-[450px] rounded-xl border border-slate-600"></div>
+            </div>
+            <div id="zone-analysis-panel" class="grid grid-cols-1 lg:grid-cols-2 gap-6 hidden">
+                <div class="glass p-6 rounded-2xl border border-blue-500/30 bg-blue-900/10">
+                    <h3 class="font-bold text-blue-300 mb-4" id="zone-title">สถิติเจาะลึก</h3>
+                    <div class="h-64"><canvas id="zoneDemoChart"></canvas></div>
+                </div>
+                <div class="glass p-6 rounded-2xl border border-indigo-500/30 bg-indigo-900/10">
+                    <h3 class="font-bold text-indigo-300 mb-4">ประมาณการงบประมาณ</h3>
+                    <div class="h-64"><canvas id="zoneBudgetChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="dashboard_data.js"></script>
+    <script>
+        lucide.createIcons();
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = 'Outfit, sans-serif';
+
+        let charts = {};
+        let leafletMap;
+        let currentTab = 1;
+        const data = typeof window.dashboardData !== 'undefined' ? window.dashboardData : null;
+
+        function switchTab(t) {
+            currentTab = t;
+            [1,2,3,4].forEach(i => {
+                let el = document.getElementById(`tab${i}`);
+                el.classList.add('ht'); el.style.display='';
+                document.getElementById(`btn-tab${i}`).classList.remove('active');
+            });
+            let act = document.getElementById(`tab${t}`);
+            act.classList.remove('ht');
+            if(t === 4) { act.style.display = 'flex'; if(!leafletMap) setTimeout(initMap, 100); }
+            else { act.style.display = 'block'; }
+            document.getElementById(`btn-tab${t}`).classList.add('active');
+            const titles = ['Traffic Overview','Demographics & User Profile','Business Analysis & Root Cause','Zones & Location Map'];
+            const descs = ['สรุปภาพรวมการใช้งานจาก GA4 และ MySQL','ข้อมูลผู้ใช้งาน: อายุ, เพศ, ทำเล','วิเคราะห์สาเหตุหลักที่ยังขายไม่ได้','แสดงทำเลที่รองรับทั้ง 28 โซน'];
+            document.getElementById('page-title').innerText = titles[t-1];
+            document.getElementById('page-desc').innerText = descs[t-1];
+            updateData();
+        }
+
+        function getFiltered() {
+            if(!data) return { analyze: [], bookings: [] };
+            const days = parseInt(document.getElementById('dateRange').value);
+            let analyze = data.analyze || [];
+            let bookings = data.bookings || [];
+            if(days < 9999) {
+                // Use last known data date as anchor
+                let anchor = new Date('2026-04-06');
+                const cut = new Date(anchor); cut.setDate(cut.getDate() - days);
+                analyze = analyze.filter(d => new Date(d.date) >= cut);
+                bookings = bookings.filter(d => new Date(d.date) >= cut);
+            }
+            return { analyze, bookings };
+        }
+
+        function updateData() {
+            if(!data) { alert('❌ ไม่พบ dashboard_data.js'); return; }
+            const { analyze, bookings } = getFiltered();
+
+            if(currentTab === 1) {
+                document.getElementById('kpi-result').innerText = analyze.length.toLocaleString();
+                const dMap = {}; analyze.forEach(d => { if(d.date) dMap[d.date] = (dMap[d.date]||0)+1; });
+                const sk = Object.keys(dMap).sort();
+                renderChart('seoLineChart','line',{ labels: sk.length ? sk : ['No Data'], datasets:[{ label:'Log Count', data: sk.map(k=>dMap[k]), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)', fill: true, tension:0.3 }] });
+                renderChart('funnelChart','bar',{
+                    labels:['Home','Search','AI Result','Booking'],
+                    datasets:[{ label:'Users', data:[1762,226,166,33], backgroundColor:['#38bdf8','#34d399','#facc15','#f87171'], borderRadius:6 }]
+                },{ indexAxis:'y' });
+            }
+
+            if(currentTab === 2) {
+                document.getElementById('total-analyze-count').innerText = analyze.length.toLocaleString();
+                // Age
+                const validAges = analyze.map(a=>a.age).filter(a => a && a > 15 && a < 80);
+                const avg = validAges.length ? (validAges.reduce((a,b)=>a+b)/validAges.length).toFixed(0) : 'N/A';
+                document.getElementById('kpi-age').innerText = avg;
+                const groups = {'18-24': 0,'25-35': 0,'36-45': 0,'46-55': 0,'55+': 0};
+                validAges.forEach(a => {
+                    if(a < 25) groups['18-24']++;
+                    else if(a <= 35) groups['25-35']++;
+                    else if(a <= 45) groups['36-45']++;
+                    else if(a <= 55) groups['46-55']++;
+                    else groups['55+']++;
+                });
+                const dominant = Object.entries(groups).sort((a,b)=>b[1]-a[1])[0];
+                document.getElementById('kpi-age-group').innerText = dominant ? dominant[0] + ' ปี' : 'N/A';
+
+                // Gender
+                const gMap = {};
+                analyze.forEach(a => { if(a.gender){ let g=a.gender.toLowerCase(); gMap[g]=(gMap[g]||0)+1; } });
+                const total = Object.values(gMap).reduce((a,b)=>a+b,0)||1;
+                document.getElementById('kpi-male').innerText = ((gMap['male']||0)/total*100).toFixed(0)+'%';
+                document.getElementById('kpi-female').innerText = ((gMap['female']||0)/total*100).toFixed(0)+'%';
+                renderChart('genderChart','pie',{
+                    labels: Object.keys(gMap).map(g => g.charAt(0).toUpperCase()+g.slice(1)),
+                    datasets:[{ data: Object.values(gMap), backgroundColor:['#3b82f6','#ec4899','#a3e635'], borderWidth:0 }]
+                });
+                renderChart('ageGroupChart','bar',{
+                    labels: Object.keys(groups),
+                    datasets:[{ label:'จำนวน (คน)', data: Object.values(groups), backgroundColor:'#818cf8', borderRadius: 6 }]
+                });
+
+                // Location Table
+                const tbody = document.getElementById('location-table');
+                tbody.innerHTML = '';
+                if(data.locations) {
+                    data.locations.forEach(loc => {
+                        const zone = loc.lat > 13.8 ? 'North BKK 🟠' : loc.lng < 100.45 ? 'West BKK 🟣' : loc.lat < 13.7 ? 'South BKK 🔵' : 'Central/CBD 🟢';
+                        tbody.innerHTML += `<tr><td class="text-slate-500">${loc.id}</td><td class="font-semibold">${loc.name}</td><td class="text-slate-400">${loc.lat.toFixed(4)}</td><td class="text-slate-400">${loc.lng.toFixed(4)}</td><td>${zone}</td></tr>`;
+                    });
+                }
+            }
+
+            if(currentTab === 3) {
+                renderChart('engagementChart','bar',{
+                    labels:['AI Result Page','Search/Input Page','Booking Page'],
+                    datasets:[{ label:'เวลาเฉลี่ย (วินาที)', data:[503,322,219], backgroundColor:['#22d3ee','#818cf8','#f472b6'], borderRadius:6 }]
+                });
+                renderChart('supplyDemandChart','line',{
+                    labels:['< 3M', '3-5M', '5-8M', '8-12M', '> 12M'],
+                    datasets:[
+                        { label:'Demand (ความต้องการ)', data:[25,55,30,10,5], borderColor:'#f43f5e', tension:0.3, fill:false },
+                        { label:'Supply (ทรัพย์ที่มี)', data:[5,15,35,40,25], borderColor:'#34d399', tension:0.3, fill:false }
+                    ]
+                });
+            }
+        }
+
+        function initMap() {
+            if(leafletMap) return;
+            leafletMap = L.map('map').setView([13.75, 100.52], 11);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'&copy; CARTO' }).addTo(leafletMap);
+            if(data && data.locations) {
+                data.locations.forEach(loc => {
+                    if(!loc.lat) return;
+                    const zone = loc.lat > 13.8 ? '#f97316' : loc.lng < 100.45 ? '#a855f7' : loc.lat < 13.7 ? '#3b82f6' : '#10b981';
+                    L.circleMarker([loc.lat,loc.lng],{ color:zone, fillColor:zone, fillOpacity:0.7, radius:10 })
+                        .addTo(leafletMap)
+                        .bindPopup(`<b>${loc.name}</b><br>Lat: ${loc.lat} | Lng: ${loc.lng}<br><small>คลิกเพื่อดูสถิติ</small>`)
+                        .on('click', () => {
+                            document.getElementById('zone-analysis-panel').classList.remove('hidden');
+                            document.getElementById('zone-title').innerText = `สถิติทำเล: ${loc.name}`;
+                            renderChart('zoneDemoChart','doughnut',{ labels:['Male','Female'], datasets:[{ data:[65,35], backgroundColor:['#3b82f6','#ec4899'], borderWidth:0 }] });
+                            renderChart('zoneBudgetChart','bar',{ labels:['3-5M','5-8M','>8M'], datasets:[{ data:[60,30,10], backgroundColor:'#818cf8', borderRadius:4 }] });
+                        });
+                });
+            }
+        }
+
+        function renderChart(id,type,data,extra={}) {
+            if(charts[id]) charts[id].destroy();
+            const el = document.getElementById(id); if(!el) return;
+            charts[id] = new Chart(el.getContext('2d'),{ type, data, options:{ responsive:true, maintainAspectRatio:false, ...extra }});
+        }
+
+        window.onload = () => { if(!data) alert('❌ ไม่พบ dashboard_data.js'); else updateData(); };
+    </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YourHome Analytics Dashboard</title>
+    <!-- Tailwind CSS for rapid styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+    </style>
+</head>
+<body class="p-8 min-h-screen">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">YourHome Business Insights</h1>
+            <p class="text-slate-400 mt-2">วิเคราะห์สาเหตุ "ทำไมยังไม่มีคนจองเข้ามา?" จากข้อมูลจริง</p>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div class="glass-card p-6 text-center">
+                <h3 class="text-slate-400 text-sm uppercase tracking-wider">ผู้เข้าชมหน้าแรก</h3>
+                <p class="text-4xl font-bold text-white mt-2">1,762</p>
+                <p class="text-xs text-red-400 mt-2">ลดลงอย่างรวดเร็วใน Step ถัดไป</p>
+            </div>
+            <div class="glass-card p-6 text-center">
+                <h3 class="text-slate-400 text-sm uppercase tracking-wider">คนรันผลวิเคราะห์สำเร็จ</h3>
+                <p class="text-4xl font-bold text-blue-400 mt-2">166</p>
+                <p class="text-xs text-emerald-400 mt-2">อยู่ในหน้านี้นานถึง ~8 นาที</p>
+            </div>
+            <div class="glass-card p-6 text-center">
+                <h3 class="text-slate-400 text-sm uppercase tracking-wider">คนเข้าไปหน้าจอง (Booking)</h3>
+                <p class="text-4xl font-bold text-amber-400 mt-2">33</p>
+                <p class="text-xs text-slate-400 mt-2">Conversion ต่ำมาก (1.8%)</p>
+            </div>
+            <div class="glass-card p-6 text-center border-red-500/50 border">
+                <h3 class="text-slate-400 text-sm uppercase tracking-wider">พบ Web Error (ครั้ง)</h3>
+                <p class="text-4xl font-bold text-red-500 mt-2">6,836</p>
+                <p class="text-xs text-red-400 mt-2">ส่งผลกระทบต่อ 328 ผู้ใช้</p>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+            
+            <!-- Funnel Chart -->
+            <div class="glass-card p-6">
+                <h2 class="text-xl font-bold mb-4">1. User Drop-off Funnel (หาจุดหลุด)</h2>
+                <div class="relative h-72 w-full">
+                    <canvas id="funnelChart"></canvas>
+                </div>
+                <p class="text-sm text-slate-400 mt-4 leading-relaxed">
+                    <strong>วิเคราะห์:</strong> คนเข้ามาหน้าแรกเยอะมาก แต่ทะลุไปหน้าค้นหาและเกิดการวิเคราะห์ได้น้อย และจุดที่แย่ที่สุดคือการเปลี่ยนจากคนดูเป็น "คนจอง" (Booking) 
+                </p>
+            </div>
+
+            <!-- SEO Chart -->
+            <div class="glass-card p-6">
+                <h2 class="text-xl font-bold mb-4">2. แหล่งที่มาและ SEO (ทำไมไม่มีคนเข้าใหม่)</h2>
+                <div class="relative h-72 w-full">
+                    <canvas id="seoChart"></canvas>
+                </div>
+                <p class="text-sm text-slate-400 mt-4 leading-relaxed">
+                    <strong>วิเคราะห์:</strong> คำที่ Search เข้ามาล้วนเป็น "ชื่อแบรนด์" ไม่พบการค้นหา Generic Keywords (เช่น "บ้านถูกโฉลก") ชี้ให้เห็นว่า Google ยังไม่รู้จักเนื้อหาในเว็บ
+                </p>
+            </div>
+
+            <!-- Engagement Time -->
+            <div class="glass-card p-6">
+                <h2 class="text-xl font-bold mb-4">3. ความสนใจของผู้ใช้ (เวลาเฉลี่ย/วินาที)</h2>
+                <div class="relative h-72 w-full">
+                    <canvas id="timeChart"></canvas>
+                </div>
+                <p class="text-sm text-slate-400 mt-4 leading-relaxed">
+                    <strong>วิเคราะห์:</strong> ระยะเวลาในหน้า Result สูงมหาศาล (503 วินาที) แปลว่า "ข้อมูลมีประโยชน์ คนตั้งใจอ่าน" แต่ติดปัญหาที่ทำให้เขาไปต่อไม่ได้
+                </p>
+            </div>
+
+            <!-- Conclusion Box -->
+            <div class="glass-card p-6 bg-gradient-to-br from-slate-800 to-slate-900 border-l-4 border-l-blue-500">
+                <h2 class="text-2xl font-bold mb-4 text-blue-300">💡 3 สาเหตุหลักที่ไม่มีคนจอง</h2>
+                <ul class="space-y-4 text-slate-300 ml-4 list-disc">
+                    <li>
+                        <strong class="text-white">ระบบพัง มี Error มหาศาล:</strong> สถิติ Event `web_exception` สูงผิดปกติมาก อาจเป็นกำแพงที่ทำให้ลูกค้ารันผลไม่ผ่าน หรือกดจองแล้วค้าง
+                    </li>
+                    <li>
+                        <strong class="text-white">หน้าแรก (Home) ดึงดูดไม่พอ:</strong> คนเข้าหน้าแรก 1,762 แต่คลิกต่อแค่ 226 คน แปลว่าหน้าแรกขาด Call-to-Action ที่ชัดเจน หรือเข้าใจยาก
+                    </li>
+                    <li>
+                        <strong class="text-white">Supply บ้านไม่ตรงใจ / น้อยไป:</strong> คนที่รันผลวิเคราะห์ยอมอ่านนานถึง 8 นาทีแปลว่าสนใจจริง แต่มีแค่ 33 คนกดไปหน้าจอง สิ่งนี้ชี้ชัดว่า "ไม่เจอบ้านที่ถูกใจจากผลลัพธ์ที่ให้มา" ต้องเร่งเพิ่มจำนวนทรัพย์สิน (Properties Data) ไปในระบบ
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Chart Configuration -->
+    <script>
+        // Default Chart Config for Dark Theme
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        // 1. Funnel Chart
+        const ctxFunnel = document.getElementById('funnelChart').getContext('2d');
+        new Chart(ctxFunnel, {
+            type: 'bar',
+            data: {
+                labels: ['1. หน้าแรก (Home)', '2. แจ้งความต้องการ (Search)', '3. รันผลวิเคราะห์ (Result)', '4. หน้าจอง (Booking)'],
+                datasets: [{
+                    label: 'จำนวน Active Users',
+                    data: [1762, 226, 166, 33],
+                    backgroundColor: [
+                        'rgba(56, 189, 248, 0.8)',
+                        'rgba(52, 211, 153, 0.8)',
+                        'rgba(250, 204, 21, 0.8)',
+                        'rgba(248, 113, 113, 0.8)'
+                    ],
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y', // Horizontal bar for funnel feel
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // 2. SEO Chart (Doughnut)
+        const ctxSeo = document.getElementById('seoChart').getContext('2d');
+        new Chart(ctxSeo, {
+            type: 'doughnut',
+            data: {
+                labels: ['"yourhome"', '"your home"', 'พิมพ์ผิด (you home, etc.)', 'Generic Keywords (เช่น หาบ้าน)'],
+                datasets: [{
+                    data: [52, 11, 7, 0],
+                    backgroundColor: [
+                        '#3b82f6',
+                        '#8b5cf6',
+                        '#64748b',
+                        '#ef4444' // Zero but logically represents missing chunk
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+
+        // 3. Engagement Time Chart
+        const ctxTime = document.getElementById('timeChart').getContext('2d');
+        new Chart(ctxTime, {
+            type: 'bar',
+            data: {
+                labels: ['หน้าวิเคราะห์ (Result)', 'หน้าแจ้งความต้องการ (Search)', 'หน้ากระบวนการจอง (Booking)'],
+                datasets: [{
+                    label: 'เวลาใช้งานเฉลี่ย (วินาที)',
+                    data: [503, 322, 219],
+                    backgroundColor: 'rgba(167, 139, 250, 0.8)',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

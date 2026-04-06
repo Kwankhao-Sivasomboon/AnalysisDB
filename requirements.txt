@@ -1,0 +1,6 @@
+pandas
+sshtunnel
+pymysql
+sqlalchemy
+python-dotenv
+cryptography
